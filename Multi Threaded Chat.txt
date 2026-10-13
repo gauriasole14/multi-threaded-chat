@@ -1,0 +1,198 @@
+MultiThreadedChat:
+
+package oops;
+class ChatRoom {
+
+    private boolean suspended = false;
+    private boolean running = true;
+
+    // Send message
+    public synchronized void sendMessage(String user, String message) {
+
+        while (suspended) {
+            try {
+                wait(); // Thread suspension
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+
+        if (running) {
+            System.out.println(user + " sent: " + message);
+        }
+    }
+
+    // Suspend chat
+    public synchronized void suspendChat() {
+        suspended = true;
+        System.out.println("\n*** Chat is suspended ***");
+    }
+
+    // Resume chat
+    public synchronized void resumeChat() {
+        suspended = false;
+        notifyAll(); // Resume waiting threads
+        System.out.println("\n*** Chat is resumed ***");
+    }
+
+    // Stop chat
+    public synchronized void stopChat() {
+        running = false;
+        suspended = false;
+        notifyAll();
+
+        System.out.println("\n*** Chat is stopped ***");
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+}
+
+
+// User Thread
+class User extends Thread {
+
+    private ChatRoom chatRoom;
+    private String userName;
+
+    User(ChatRoom chatRoom, String userName) {
+        this.chatRoom = chatRoom;
+        this.userName = userName;
+    }
+
+    @Override
+    public void run() {
+
+        String[] messages = {
+            "Hello everyone!",
+            "How are you?",
+            "This is a multi-threaded chat.",
+            "Java threads are interesting!",
+            "Goodbye!"
+        };
+
+        for (String message : messages) {
+
+            if (!chatRoom.isRunning()) {
+                break;
+            }
+
+            chatRoom.sendMessage(userName, message);
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        System.out.println(userName + " thread has finished.");
+    }
+}
+
+
+// Main Class
+public class MultiThreadedChat {
+
+    public static void main(String[] args) {
+
+        ChatRoom chatRoom = new ChatRoom();
+
+        // Creating users
+        User user1 = new User(chatRoom, "Akash");
+        User user2 = new User(chatRoom, "Rahul");
+        User user3 = new User(chatRoom, "Priya");
+
+        System.out.println("===== MULTI-THREADED CHAT APPLICATION =====");
+
+        // Start threads
+        user1.start();
+        user2.start();
+        user3.start();
+
+        try {
+
+            // Allow threads to run
+            Thread.sleep(2000);
+
+            // Check thread status using isAlive()
+            System.out.println("\n--- Thread Status ---");
+            System.out.println("Akash thread alive: " + user1.isAlive());
+            System.out.println("Rahul thread alive: " + user2.isAlive());
+            System.out.println("Priya thread alive: " + user3.isAlive());
+
+            // Suspend chat
+            chatRoom.suspendChat();
+
+            Thread.sleep(3000);
+
+            // Resume chat
+            chatRoom.resumeChat();
+
+            Thread.sleep(3000);
+
+            // Stop chat
+            chatRoom.stopChat();
+
+            // join() waits for threads to finish
+            user1.join();
+            user2.join();
+            user3.join();
+
+            System.out.println("\n--- Final Thread Status ---");
+            System.out.println("Akash thread alive: " + user1.isAlive());
+            System.out.println("Rahul thread alive: " + user2.isAlive());
+            System.out.println("Priya thread alive: " + user3.isAlive());
+
+            System.out.println("\nAll user threads have completed.");
+
+        } catch (InterruptedException e) {
+
+            Thread.currentThread().interrupt();
+            System.out.println("Main thread interrupted.");
+        }
+    }
+}
+
+
+OUTPUT:
+===== MULTI-THREADED CHAT APPLICATION =====
+Akash sent: Hello everyone!
+Priya sent: Hello everyone!
+Rahul sent: Hello everyone!
+Akash sent: How are you?
+Priya sent: How are you?
+Rahul sent: How are you?
+
+--- Thread Status ---
+Akash thread alive: true
+Rahul thread alive: true
+Priya thread alive: true
+
+*** Chat is suspended ***
+
+*** Chat is resumed ***
+Akash sent: This is a multi-threaded chat.
+Priya sent: This is a multi-threaded chat.
+Rahul sent: This is a multi-threaded chat.
+Akash sent: Java threads are interesting!
+Rahul sent: Java threads are interesting!
+Priya sent: Java threads are interesting!
+Rahul sent: Goodbye!
+Priya sent: Goodbye!
+Akash sent: Goodbye!
+Rahul thread has finished.
+Priya thread has finished.
+
+*** Chat is stopped ***
+Akash thread has finished.
+
+--- Final Thread Status ---
+Akash thread alive: false
+Rahul thread alive: false
+Priya thread alive: false
+
+All user threads have completed.
